@@ -108,7 +108,7 @@ function GetDomainController(const DomainName: string): string;
 function GetDNSDomainName(const DomainName: string): string;
 function EnumAllTrustedDomains(const ControllerName: string; List: TStrings):
   Boolean;
-function EnumAllUsers(const ControllerName:string; lvUsers: TListView): Boolean;
+function EnumAllUsers(lvUsers: TListView; const ControllerName,DomainName:string): Boolean;
 function EnumAllGroups(lvGroups: TListView; ledControllerName: TLabeledEdit):
   Boolean;
 function EnumAllWorkStation(const ControllerName:string; lvWorkStation:TListView): Boolean;
@@ -301,15 +301,17 @@ end;
 
 //  Данная функция получает информацию о всех пользователях присутствующих в домене
 // =============================================================================
-function EnumAllUsers(const ControllerName:string; lvUsers: TListView): Boolean;
+function EnumAllUsers(lvUsers: TListView; const ControllerName,DomainName:string): Boolean;
 var
   Tmp, Info: PNetDisplayUser;
   I, CurrIndex, EntriesRequest,
   PreferredMaximumLength,
   ReturnedEntryCount: Cardinal;
   Error: DWORD;
+  DNSDomnName:string;
 begin
   CurrIndex := 0;
+  DNSDomnName:= GetDNSDomainName(DomainName);
   repeat
     Info := nil;
     // NetQueryDisplayInformation возвращает информацию только о 100-а записях
@@ -317,6 +319,7 @@ begin
     // передаваемый функции, который определяет с какой записи продолжать
     // вывод информации
     EntriesRequest := 100;
+
     PreferredMaximumLength := EntriesRequest * SizeOf(TNetDisplayUser);
     ReturnedEntryCount := 0;
     // Для выполнения функции, в нее нужно передать DNS имя контролера домена
@@ -336,9 +339,10 @@ begin
       begin
         with lvUsers.Items.Add do
         begin
-          Caption := Tmp^.usri1_name;          // Имя пользователя
+          Caption := Tmp^.usri1_full_name;          // Имя пользователя
+          SubItems.Add(Tmp^.usri1_name);
           SubItems.Add(Tmp^.usri1_comment);    // Комментарий
-       //   SubItems.Add(GetSID(Caption));       // Его SID
+          SubItems.Add(GetSID(Caption,DNSDomnName));       // Его SID
           // Запоминаем индекс с которым будем вызывать повторно функцию (если нужно)
           CurrIndex := Tmp^.usri1_next_index;
         end;
