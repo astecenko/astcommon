@@ -181,10 +181,6 @@ const
   FOLDERID_VideosLibrary: TGUID = '{491E922F-5643-4AF4-A7EB-4E7A138D8174}';
   FOLDERID_Windows: TGUID = '{F38BF404-1D43-42F2-9305-67DE0B28FC23}';
 
-  //чтение текстового ключа из ini-файла без учета регистра
-function IniReadStringEx(const FileName: TFileName; Section, Ident, Default:
-  string): string;
-
 //получение спец. каталогов.
 function GetSpecialFolderLocation(const Folder: Integer; const FolderNew:
   TGUID): string;
@@ -241,7 +237,7 @@ procedure StringGridClear(Grid: TStringGrid; const Cut: Boolean = True);
 procedure MemoLineSelect(Memo: TMemo; Index: integer);
 
 implementation
-uses Windows, Clipbrd, IniFiles, ActiveX, ShlObj;
+uses Windows, Clipbrd, ActiveX, ShlObj;
 
 type
   TClipboardAccess = class(TClipboard);
@@ -276,36 +272,7 @@ begin
     Clipboard.AsText := aText
 end;
 
-//Прочитать параметр из ini-файла, значения переводятся в нижний регистр
 
-function IniReadStringEx(const FileName: TFileName; Section, Ident, Default:
-  string): string;
-var
-  param: TIniFile;
-  s1, s2: TStringList;
-  sf: string;
-begin
-  sf := GetTempFile('.tmp');
-  s1 := TStringList.Create;
-  try
-    s1.LoadFromFile(FileName);
-  except
-    Result := Default;
-    Exit;
-  end;
-  s1.Text := AnsiLowerCase(s1.Text);
-  try
-    s1.SaveToFile(sf);
-  except
-    Result := Default;
-    Exit;
-  end;
-  FreeAndNil(s1);
-  param := TIniFile.Create(sf);
-  Result := param.ReadString(Section, Ident, Default);
-  FreeAndNil(param);
-  DeleteFile(PAnsiChar(sf));
-end;
 
 function IfThen(AValue: Boolean; const ATrue: string; const AFalse: string =
   ''): string; overload;
@@ -428,7 +395,7 @@ end;
 
 function DirectoryIsReadOnly(const DirName: string): Boolean;
 begin
-
+  Result:=False;
 end;
 
 {Дополняет строку expression слева символом cFillChar до длины nLength}
