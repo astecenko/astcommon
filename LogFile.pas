@@ -57,7 +57,7 @@ var
   dwWritten: Cardinal;
 begin
   if NewLine > '' then begin
-    S := fDateTimeToStr(Now()) +'  '+ UserName+ ' - ' +NewLine + #13#10;
+    S := fDateTimeToStr(Now) +'  '+ UserName+ ' - ' +NewLine + #13#10;
   end
   else
     S := #13#10;
