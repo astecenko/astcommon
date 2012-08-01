@@ -9,7 +9,7 @@
 
 unit SAVLib;
 interface
-uses SysUtils, Classes, Controls, CheckLst, Grids,StdCtrls;
+uses SysUtils, Classes, Controls, CheckLst, Grids, StdCtrls;
 const
   CSIDL_DESKTOP = $0000;
   CSIDL_INTERNET = $0001;
@@ -181,7 +181,7 @@ const
   FOLDERID_VideosLibrary: TGUID = '{491E922F-5643-4AF4-A7EB-4E7A138D8174}';
   FOLDERID_Windows: TGUID = '{F38BF404-1D43-42F2-9305-67DE0B28FC23}';
 
-//получение спец. каталогов.
+  //получение спец. каталогов.
 function GetSpecialFolderLocation(const Folder: Integer; const FolderNew:
   TGUID): string;
 
@@ -192,7 +192,7 @@ procedure CopyTextToClipboard(const aText: string);
 function GetTempFile(const Extension: string): string;
 
 // копирует файл aShortFileName из текущей директории в aNewPath, если в текущей он есть а в aNewPath нет
-procedure CopyFromCurDirIfExist(const aNewPath, aShortFileName:string);
+procedure CopyFromCurDirIfExist(const aNewPath, aShortFileName: string);
 
 function IfThen(AValue: Boolean; const ATrue: string; const AFalse: string =
   ''): string; overload;
@@ -272,8 +272,6 @@ begin
     Clipboard.AsText := aText
 end;
 
-
-
 function IfThen(AValue: Boolean; const ATrue: string; const AFalse: string =
   ''): string; overload;
 begin
@@ -283,12 +281,12 @@ begin
     Result := AFalse;
 end;
 
-
-procedure CopyFromCurDirIfExist(const aNewPath, aShortFileName:string);
+procedure CopyFromCurDirIfExist(const aNewPath, aShortFileName: string);
 begin
   if (FileExists(GetCurrentDir + '\' + aShortFileName)) and (not
-      (FileExists(aNewPath + aShortFileName))) then
-      CopyFile(PChar(GetCurrentDir + '\' + aShortFileName), PChar(aNewPath + aShortFileName), False);
+    (FileExists(aNewPath + aShortFileName))) then
+    CopyFile(PChar(GetCurrentDir + '\' + aShortFileName), PChar(aNewPath +
+      aShortFileName), False);
 end;
 
 {ѕолучить дату файла
@@ -394,8 +392,17 @@ begin
 end;
 
 function DirectoryIsReadOnly(const DirName: string): Boolean;
+var
+  hFile: Cardinal;
+  sf:string;
 begin
-  Result:=False;
+  sf:=IncludeTrailingPathDelimiter(DirName) + '~dirtest.tmp';
+  hFile := CreateFile(PChar(sf), GENERIC_WRITE,
+    FILE_SHARE_WRITE or FILE_SHARE_READ, nil,
+    OPEN_ALWAYS, FILE_FLAG_WRITE_THROUGH, 0);
+  Result := hFile = INVALID_HANDLE_VALUE;
+  CloseHandle(hFile);
+  Windows.DeleteFile(PChar(sf));
 end;
 
 {ƒополн€ет строку expression слева символом cFillChar до длины nLength}
@@ -610,11 +617,11 @@ end;
 procedure MemoLineSelect(Memo: TMemo; Index: integer);
 begin
   with Memo do
-    begin
-      SelStart := Perform($BB, Index, 0);
-      SelLength := Length(Lines[Index]);
-      SetFocus;
-    end;
+  begin
+    SelStart := Perform($BB, Index, 0);
+    SelLength := Length(Lines[Index]);
+    SetFocus;
+  end;
 end;
 
 end.
