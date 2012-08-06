@@ -13,16 +13,43 @@ interface
 // Слияние INI
 procedure MergeINI(const DestIniFile, SourceIniFile: string);
 
-  //чтение текстового ключа из ini-файла без учета регистра
+//чтение текстового ключа из ini-файла без учета регистра
 function IniReadStringEx(const FileName, Section, Ident, Default:
   string): string;
 
 implementation
 uses Classes, SysUtils, IniFiles, SAVLib;
 
-
-
 procedure MergeINI(const DestIniFile, SourceIniFile: string);
+var
+  DestIni, SourceIni: TMemIniFile;
+  i, j: Integer;
+  lSections, lValues: TStringList;
+  s:string;
+begin
+  if FileExists(SourceIniFile) then
+  begin
+    DestIni := TMemIniFile.Create(DestIniFile);
+    SourceIni := TMemIniFile.Create(SourceIniFile);
+    lSections := TStringList.Create;
+    lValues := TStringList.Create;
+    SourceIni.ReadSections(lSections);
+    for i := 0 to lSections.Count - 1 do
+    begin
+      SourceIni.ReadSection(lSections[i], lValues);
+      for j := 0 to lValues.Count - 1 do
+        DestIni.WriteString(lSections[i], lValues[j],
+          SourceIni.ReadString(lSections[i], lValues[j], ''));
+    end;
+    DestIni.UpdateFile;
+    FreeAndNil(lSections);
+    FreeAndNil(lValues);
+    FreeAndNil(DestIni);
+    FreeAndNil(SourceIni);
+  end;
+end;
+
+procedure DeleteFromINI(const DestIniFile, SourceIniFile: string);
 var
   DestIni, SourceIni: TMemIniFile;
   i, j: Integer;
