@@ -9,7 +9,7 @@
 
 unit SAVLib;
 interface
-uses SysUtils, Classes, Controls, CheckLst, Grids, StdCtrls;
+uses SysUtils, Classes, Controls, CheckLst, Grids, StdCtrls,Math;
 const
   CSIDL_DESKTOP = $0000;
   CSIDL_INTERNET = $0001;
@@ -220,9 +220,16 @@ function Padl(expression: string; nLength: Integer; cFillChar: Char = ' '):
 function Padr(expression: string; nLength: Integer; cFillChar: Char = ' '):
   string;
 
+  //округление
+function SimpleRoundTo(const AValue: Extended; const ADigit: TRoundToRange =
+  -2): Extended;
+
 //Заполняет Dest списком каталогов в директории Source
 procedure GetDirList(Dest: TStrings; const Source: string = ''; const FullPath:
   Boolean = False);
+
+//быстрая сортировка
+procedure qSort(var ar: array of real; low, high: integer);
 
 function List2String(source: TStrings; const delimiter: string = '|'): string;
 function CheckList2String(source: TCheckListBox; const delimiter: string = '|';
@@ -394,9 +401,9 @@ end;
 function DirectoryIsReadOnly(const DirName: string): Boolean;
 var
   hFile: Cardinal;
-  sf:string;
+  sf: string;
 begin
-  sf:=IncludeTrailingPathDelimiter(DirName) + '~dirtest.tmp';
+  sf := IncludeTrailingPathDelimiter(DirName) + '~dirtest.tmp';
   hFile := CreateFile(PChar(sf), GENERIC_WRITE,
     FILE_SHARE_WRITE or FILE_SHARE_READ, nil,
     OPEN_ALWAYS, FILE_FLAG_WRITE_THROUGH, 0);
@@ -622,6 +629,50 @@ begin
     SelLength := Length(Lines[Index]);
     SetFocus;
   end;
+end;
+
+//алгоритм быстрой сортировки
+//при первом вызове 2-ой аргумент должен быть равен 0
+//3-ий аргумент должен быть равен числу элементов массива минус 1
+
+procedure qSort(var ar: array of real; low, high: integer);
+var
+  i, j: integer;
+  m, wsp: real;
+begin
+  i := low;
+  j := high;
+  m := ar[trunc((i + j) / 2)];
+  repeat
+    while (ar[i] < m) do
+      i := i + 1;
+    while (ar[j] > m) do
+      j := j - 1;
+    if (i <= j) then
+    begin
+      wsp := ar[i];
+      ar[i] := ar[j];
+      ar[j] := wsp;
+      i := i + 1;
+      j := j - 1;
+    end;
+  until (i > j);
+  if (low < j) then
+    qSort(ar, low, j);
+  if (i < high) then
+    qSort(ar, i, high);
+end;
+
+function SimpleRoundTo(const AValue: Extended; const ADigit: TRoundToRange =
+  -2): Extended;
+var
+  LFactor: Extended;
+begin
+  LFactor := IntPower(10, ADigit);
+  if AValue < 0 then
+    Result := Trunc((AValue / LFactor) - 0.5) * LFactor
+  else
+    Result := Trunc((AValue / LFactor) + 0.5) * LFactor;
 end;
 
 end.
