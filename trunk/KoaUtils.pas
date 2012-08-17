@@ -32,7 +32,7 @@ function KolToString(Value: string): string;
 function StrToVal(const s: string): Double;
 function Form(S: ShortString; N: integer): ShortString;
 procedure fCreateDir(const DirName: string);
-function fRemoveDir(const DirName: string):boolean;
+function fRemoveDir(const DirName: string): boolean;
 procedure fCopyFile(const Source, Dest: string; Log: TLogFile = nil);
 function UpdateFile(const FileName, SourceFileName: string; const ui: TUpdInd;
   const Prev: Integer;
@@ -349,14 +349,14 @@ begin
   end;
 end;
 
-function fRemoveDir(const DirName: string):boolean;
+function fRemoveDir(const DirName: string): boolean;
 var
   SR: TSearchRec;
   S: string;
 begin
   S := ExcludeTrailingPathDelimiter(DirName);
-  if (S = '') or (not(DirectoryExists(s))) then
-   Result:=True
+  if (S = '') or (not (DirectoryExists(s))) then
+    Result := True
   else
   begin
     if FindFirst(S + '\*', faAnyFile, SR) = 0 then
@@ -375,11 +375,11 @@ begin
       until FindNext(SR) <> 0;
       SysUtils.FindClose(SR);
     end;
-   // if not RemoveDirectory(PChar(DirName)) then
-   //  if not (RemoveDir(DirName) then
-   //   raise Exception.Create('Ошибка при удалении каталога ' + DirName + ': ' +
-   //     SysErrorMessage(GetLastError))
-   Result:=RemoveDirectory(PChar(S));
+    // if not RemoveDirectory(PChar(DirName)) then
+    //  if not (RemoveDir(DirName) then
+    //   raise Exception.Create('Ошибка при удалении каталога ' + DirName + ': ' +
+    //     SysErrorMessage(GetLastError))
+    Result := RemoveDirectory(PChar(S));
   end;
 end;
 
@@ -387,12 +387,14 @@ procedure fCopyFile(const Source, Dest: string; Log: TLogFile = nil);
 var
   DestDir: string;
 begin
-  if Dest[2] <> '\' then
+  {if Dest[2] <> '\' then
   begin
     DestDir := ExtractFilePath(Dest);
     fCreateDir(DestDir);
-  end;
-
+  end;}
+  DestDir := ExtractFilePath(Dest);
+  if not (DirectoryExists(DestDir)) then
+    ForceDirectories(DestDir);
   if Source = Dest then
     Exit;
   if not CopyFile(PChar(Source), PChar(Dest), False) then
@@ -562,7 +564,7 @@ const
     'семьсот ', 'восемьсот ', 'девятьсот '),
     ('миллионов ', 'один миллион ', 'два миллиона ', 'три миллиона ',
     'четыре миллиона ', 'пять миллионов ', 'шесть миллионов ',
-      'семь миллионов ',
+    'семь миллионов ',
     'восемь миллионов ', 'девять миллионов '),
     ('', '', 'двадцать ', 'тридцать ', 'сорок ', 'пятьдесят ', 'шестьдесят ',
     'семьдесят ', 'восемьдесят ', 'девяносто '),

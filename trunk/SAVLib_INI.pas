@@ -25,7 +25,6 @@ var
   DestIni, SourceIni: TMemIniFile;
   i, j: Integer;
   lSections, lValues: TStringList;
-  s:string;
 begin
   if FileExists(SourceIniFile) then
   begin
