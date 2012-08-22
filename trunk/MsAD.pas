@@ -108,13 +108,19 @@ function GetDomainController(const DomainName: string): string;
 function GetDNSDomainName(const DomainName: string): string;
 function EnumAllTrustedDomains(const ControllerName: string; List: TStrings):
   Boolean;
-function EnumAllUsers(lvUsers: TListView; const ControllerName,DomainName:string): Boolean;
+function EnumAllUsers(lvUsers: TListView; const ControllerName, DomainName:
+  string): Boolean;
 function EnumAllGroups(lvGroups: TListView; ledControllerName: TLabeledEdit):
   Boolean;
-function EnumAllWorkStation(const ControllerName:string; lvWorkStation:TListView): Boolean;
-function GetSID(const SecureObject,DNSName: String): String;
-function GetAllGroupUsers(const GroupName,ControllerName: String; List:TStrings): Boolean;
-function GetAllUserGroups(const UserName,ControllerName: String; List:TStrings): Boolean;
+function EnumAllWorkStation(const ControllerName: string; lvWorkStation:
+  TListView): Boolean;
+function GetSID(const SecureObject, DNSName: string): string;
+function GetAllGroupUsers(const GroupName, ControllerName: string; List:
+  TStrings): Boolean;
+function GetAllUserGroups(const UserName, ControllerName: string; List:
+  TStrings): Boolean;
+function GetAllGroups(const sDomain: string; lsGroups: TStrings; const
+  SIDAdd: Boolean = False):Boolean;
 
 (*
 Вариант использования
@@ -176,10 +182,61 @@ begin
           begin
             Caption := Tmp^.grpi3_name; // Имя группы
             SubItems.Add(Tmp^.grpi3_comment); // Комментарий
-        //    SubItems.Add(GetSID(Caption)); // SID группы
-            // Запоминаем индекс с которым будем вызывать повторно функцию (если нужно)
+            //    SubItems.Add(GetSID(Caption)); // SID группы
+                // Запоминаем индекс с которым будем вызывать повторно функцию (если нужно)
             CurrIndex := Tmp^.grpi3_next_index;
           end;
+          Inc(Tmp);
+        end;
+      finally
+        // Чтобы небыло утечки ресурсов, освобождаем память занятую функцией под структуру
+        NetApiBufferFree(Info);
+      end;
+    // Если результат выполнения функции ERROR_MORE_DATA - вызываем функцию повторно
+  until Error in [NERR_Success, ERROR_ACCESS_DENIED];
+  // Ну и возвращаем результат всего что мы тут накодили
+  Result := Error = NERR_Success;
+end;
+
+function GetAllGroups(const sDomain: string; lsGroups: TStrings; const
+  SIDAdd: Boolean = False):Boolean;
+var
+  Tmp, Info: PNetDisplayGroup;
+  I, CurrIndex, EntriesRequest,
+    PreferredMaximumLength,
+    ReturnedEntryCount: Cardinal;
+  Error: DWORD;
+  s, s1, s2: string;
+begin
+  CurrIndex := 0;
+  s := GetDomainController(sDomain);
+  s2 := GetDNSDomainName(sDomain);
+  lsGroups.Clear;
+  repeat
+    Info := nil;
+    EntriesRequest := 100;
+    PreferredMaximumLength := EntriesRequest * SizeOf(TNetDisplayGroup);
+    ReturnedEntryCount := 0;
+    // Для выполнения функции, в нее нужно передать DNS имя контролера домена
+    // (или его IP адрес), с которого мы хочем получить информацию
+    // Для получения информации о группах используется структура NetDisplayGroup
+    // и ее идентификатор 3 (тройка) во втором параметре
+    Error := NetQueryDisplayInformation(StringToOleStr(s), 3, CurrIndex,
+      EntriesRequest, PreferredMaximumLength, ReturnedEntryCount, @Info);
+    // При безошибочном выполнении фунции будет результат либо
+    // 1. NERR_Success - все записи возвращены
+    // 2. ERROR_MORE_DATA - записи возвращены, но остались еще и нужно вызывать функцию повторно
+    if Error in [NERR_Success, ERROR_MORE_DATA] then
+      try
+        Tmp := Info;
+        // Выводим информацию которую вернула функция в структуру
+        for I := 0 to ReturnedEntryCount - 1 do
+        begin
+          s1 := Tmp^.grpi3_name;
+          if SIDAdd then
+            s1 := s1+'=' + GetSID(s1, s2);
+          lsGroups.Add(s1);
+          CurrIndex := Tmp^.grpi3_next_index;
           Inc(Tmp);
         end;
       finally
@@ -264,7 +321,7 @@ begin
     // DS_RETURN_DNS_NAME - ждем получения DNS имени
     try
       Result := DomainControllerInfo^.DomainControllerName;
-        // Результат собсно тут...
+      // Результат собсно тут...
     finally
       // Склероз это болезнь, ее нужно лечить...
       NetApiBufferFree(DomainControllerInfo);
@@ -301,17 +358,19 @@ end;
 
 //  Данная функция получает информацию о всех пользователях присутствующих в домене
 // =============================================================================
-function EnumAllUsers(lvUsers: TListView; const ControllerName,DomainName:string): Boolean;
+
+function EnumAllUsers(lvUsers: TListView; const ControllerName, DomainName:
+  string): Boolean;
 var
   Tmp, Info: PNetDisplayUser;
   I, CurrIndex, EntriesRequest,
-  PreferredMaximumLength,
-  ReturnedEntryCount: Cardinal;
+    PreferredMaximumLength,
+    ReturnedEntryCount: Cardinal;
   Error: DWORD;
-  DNSDomnName:string;
+  DNSDomnName: string;
 begin
   CurrIndex := 0;
-  DNSDomnName:= GetDNSDomainName(DomainName);
+  DNSDomnName := GetDNSDomainName(DomainName);
   repeat
     Info := nil;
     // NetQueryDisplayInformation возвращает информацию только о 100-а записях
@@ -326,34 +385,35 @@ begin
     // (или его IP адрес), с которого мы хочем получить информацию
     // Для получения информации о пользователях используется структура NetDisplayUser
     // и ее идентификатор 1 (единица) во втором параметре
-    Error := NetQueryDisplayInformation(StringToOleStr(ControllerName), 1, CurrIndex,
+    Error := NetQueryDisplayInformation(StringToOleStr(ControllerName), 1,
+      CurrIndex,
       EntriesRequest, PreferredMaximumLength, ReturnedEntryCount, @Info);
     // При безошибочном выполнении фунции будет результат либо
     // 1. NERR_Success - все записи возвращены
     // 2. ERROR_MORE_DATA - записи возвращены, но остались еще и нужно вызывать функцию повторно
     if Error in [NERR_Success, ERROR_MORE_DATA] then
-    try
-      Tmp := Info;
-      // Выводим информацию которую вернула функция в структуру
-      for I := 0 to ReturnedEntryCount - 1 do
-      begin
-        with lvUsers.Items.Add do
+      try
+        Tmp := Info;
+        // Выводим информацию которую вернула функция в структуру
+        for I := 0 to ReturnedEntryCount - 1 do
         begin
-          Caption := Tmp^.usri1_full_name;          // Имя пользователя
-          SubItems.Add(Tmp^.usri1_name);
-          SubItems.Add(Tmp^.usri1_comment);    // Комментарий
-          SubItems.Add(GetSID(Caption,DNSDomnName));       // Его SID
-          // Запоминаем индекс с которым будем вызывать повторно функцию (если нужно)
-          CurrIndex := Tmp^.usri1_next_index;
+          with lvUsers.Items.Add do
+          begin
+            Caption := Tmp^.usri1_full_name; // Имя пользователя
+            SubItems.Add(Tmp^.usri1_name);
+            SubItems.Add(Tmp^.usri1_comment); // Комментарий
+            SubItems.Add(GetSID(Caption, DNSDomnName)); // Его SID
+            // Запоминаем индекс с которым будем вызывать повторно функцию (если нужно)
+            CurrIndex := Tmp^.usri1_next_index;
+          end;
+          Inc(Tmp);
         end;
-        Inc(Tmp);
+      finally
+        // Грохаем выделенную при вызове NetQueryDisplayInformation память
+        NetApiBufferFree(Info);
       end;
-    finally
-      // Грохаем выделенную при вызове NetQueryDisplayInformation память
-      NetApiBufferFree(Info);
-    end;
-  // Если результат выполнения функции ERROR_MORE_DATA
-  // (т.е. есть еще данные) - вызываем функцию повторно
+    // Если результат выполнения функции ERROR_MORE_DATA
+    // (т.е. есть еще данные) - вызываем функцию повторно
   until Error in [NERR_Success, ERROR_ACCESS_DENIED];
   // Ну и возвращаем результат всего что мы тут накодили
   Result := Error = NERR_Success;
@@ -363,12 +423,14 @@ end;
 //  Вообщето так делать немного не верно, дело в том что рабочие станции могут
 //  присутствовать в списке не только те, которые завел сисадмин (но для демки сойдет и так)
 // =============================================================================
-function EnumAllWorkStation(const ControllerName:string; lvWorkStation:TListView): Boolean;
+
+function EnumAllWorkStation(const ControllerName: string; lvWorkStation:
+  TListView): Boolean;
 var
   Tmp, Info: PNetDisplayMachine;
   I, CurrIndex, EntriesRequest,
-  PreferredMaximumLength,
-  ReturnedEntryCount: Cardinal;
+    PreferredMaximumLength,
+    ReturnedEntryCount: Cardinal;
   Error: DWORD;
 begin
   CurrIndex := 0;
@@ -385,33 +447,34 @@ begin
     // (или его IP адрес), с которого мы хочем получить информацию
     // Для получения информации о рабочих станциях используется структура NetDisplayMachine
     // и ее идентификатор 2 (двойка) во втором параметре
-    Error := NetQueryDisplayInformation(StringToOleStr(ControllerName), 2, CurrIndex,
+    Error := NetQueryDisplayInformation(StringToOleStr(ControllerName), 2,
+      CurrIndex,
       EntriesRequest, PreferredMaximumLength, ReturnedEntryCount, @Info);
     // При безошибочном выполнении фунции будет результат либо
     // 1. NERR_Success - все записи возвращены
     // 2. ERROR_MORE_DATA - записи возвращены, но остались еще и нужно вызывать функцию повторно
     if Error in [NERR_Success, ERROR_MORE_DATA] then
-    try
-      Tmp := Info;
-      // Выводим информацию которую вернула функция в структуру
-      for I := 0 to ReturnedEntryCount - 1 do
-      begin
-        with lvWorkStation.Items.Add do
+      try
+        Tmp := Info;
+        // Выводим информацию которую вернула функция в структуру
+        for I := 0 to ReturnedEntryCount - 1 do
         begin
-          Caption := Tmp^.usri2_name;          // Имя рабочей станции
-          SubItems.Add(Tmp^.usri2_comment);    // Комментарий
-     //     SubItems.Add(GetSID(Caption));       // Её SID
-          // Запоминаем индекс с которым будем вызывать повторно функцию (если нужно)
-          CurrIndex := Tmp^.usri2_next_index;
+          with lvWorkStation.Items.Add do
+          begin
+            Caption := Tmp^.usri2_name; // Имя рабочей станции
+            SubItems.Add(Tmp^.usri2_comment); // Комментарий
+            //     SubItems.Add(GetSID(Caption));       // Её SID
+                 // Запоминаем индекс с которым будем вызывать повторно функцию (если нужно)
+            CurrIndex := Tmp^.usri2_next_index;
+          end;
+          Inc(Tmp);
         end;
-        Inc(Tmp);
+      finally
+        // Дабы небыло утечек
+        NetApiBufferFree(Info);
       end;
-    finally
-      // Дабы небыло утечек
-      NetApiBufferFree(Info);
-    end;
-  // Если результат выполнения функции ERROR_MORE_DATA
-  // (т.е. есть еще данные) - вызываем функцию повторно
+    // Если результат выполнения функции ERROR_MORE_DATA
+    // (т.е. есть еще данные) - вызываем функцию повторно
   until Error in [NERR_Success, ERROR_ACCESS_DENIED];
   // Ну и возвращаем результат всего что мы тут накодили
   Result := Error = NERR_Success;
@@ -420,12 +483,13 @@ end;
 //  Не знаю зачем добавил это, ну раз добавил - получение SID объекта
 //  Без комментариев...
 // =============================================================================
-function GetSID(const SecureObject,DNSName: String): String;
+
+function GetSID(const SecureObject, DNSName: string): string;
 var
   SID: PSID;
   StringSid: PChar;
-  ReferencedDomain: String;
-  cbSid, cbReferencedDomain:DWORD;
+  ReferencedDomain: string;
+  cbSid, cbReferencedDomain: DWORD;
   peUse: SID_NAME_USE;
 begin
   cbSID := 128;
@@ -447,11 +511,13 @@ end;
 
 //  Довольно простая функция, возвращает только имена пользователей принадлезжащих группе
 // =============================================================================
-function GetAllGroupUsers(const GroupName,ControllerName: String; List:TStrings): Boolean;
+
+function GetAllGroupUsers(const GroupName, ControllerName: string; List:
+  TStrings): Boolean;
 var
   Tmp, Info: PGroupUsersInfo0;
   PrefMaxLen, EntriesRead,
-  TotalEntries, ResumeHandle: DWORD;
+    TotalEntries, ResumeHandle: DWORD;
   I: Integer;
 begin
   // На вход подается список который мы будем заполнять
@@ -465,26 +531,28 @@ begin
     EntriesRead, TotalEntries, @ResumeHandle) = NERR_Success;
   // Смотрим результат...
   if Result then
-  try
-    Tmp := Info;
-    for I := 0 to EntriesRead - 1 do
-    begin
-      List.Add(Tmp^.grui0_name); // Банально выводим результат из структуры
-      Inc(Tmp);
+    try
+      Tmp := Info;
+      for I := 0 to EntriesRead - 1 do
+      begin
+        List.Add(Tmp^.grui0_name); // Банально выводим результат из структуры
+        Inc(Tmp);
+      end;
+    finally
+      // Не забываем, ибо может быть склероз
+      NetApiBufferFree(Info);
     end;
-  finally
-    // Не забываем, ибо может быть склероз
-    NetApiBufferFree(Info);
-  end;
 end;
 
 //  Аналогично предыдущей функции (заметьте - структура таже)
 // =============================================================================
-function GetAllUserGroups(const UserName,ControllerName: String; List:TStrings): Boolean;
+
+function GetAllUserGroups(const UserName, ControllerName: string; List:
+  TStrings): Boolean;
 var
   Tmp, Info: PGroupUsersInfo0;
   PrefMaxLen, EntriesRead,
-  TotalEntries: DWORD;
+    TotalEntries: DWORD;
   I: Integer;
 begin
   PrefMaxLen := DWORD(-1);
@@ -492,16 +560,16 @@ begin
     StringToOleStr(UserName), 0, Pointer(Info), PrefMaxLen,
     EntriesRead, TotalEntries) = NERR_Success;
   if Result then
-  try
-    Tmp := Info;
-    for I := 0 to EntriesRead - 1 do
-    begin
-      List.Add(Tmp^.grui0_name);
-      Inc(Tmp);
+    try
+      Tmp := Info;
+      for I := 0 to EntriesRead - 1 do
+      begin
+        List.Add(Tmp^.grui0_name);
+        Inc(Tmp);
+      end;
+    finally
+      NetApiBufferFree(Info);
     end;
-  finally
-    NetApiBufferFree(Info);
-  end;
 end;
 
 end.
