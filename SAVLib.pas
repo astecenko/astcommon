@@ -9,7 +9,7 @@
 
 unit SAVLib;
 interface
-uses SysUtils, Classes, Controls, CheckLst, Grids, StdCtrls,Math;
+uses SysUtils, Classes, Controls, CheckLst, Grids, StdCtrls, Math, Windows;
 const
   CSIDL_DESKTOP = $0000;
   CSIDL_INTERNET = $0001;
@@ -220,7 +220,7 @@ function Padl(expression: string; nLength: Integer; cFillChar: Char = ' '):
 function Padr(expression: string; nLength: Integer; cFillChar: Char = ' '):
   string;
 
-  //округление
+//округление
 function SimpleRoundTo(const AValue: Extended; const ADigit: TRoundToRange =
   -2): Extended;
 
@@ -245,8 +245,11 @@ procedure MemoLineSelect(Memo: TMemo; Index: integer);
 
 function TranslitRus2Lat(const Str: string): string;
 
+procedure ProcStart(const s: string; const awShowWnd: Word = 0; const aWait:
+  Boolean = False; const aWaitTime: DWORD = $FFFFFFFF);
+
 implementation
-uses Windows, Clipbrd, ActiveX, ShlObj;
+uses Clipbrd, ActiveX, ShlObj;
 
 type
   TClipboardAccess = class(TClipboard);
@@ -683,7 +686,7 @@ const
   RArrayU = 'јЅ¬√ƒ≈®∆«»… ЋћЌќѕ–—“”‘’÷„Ўў№џЏЁёя';
   colChar = 33;
   arr: array[1..2, 1..ColChar] of string =
-  (('a', 'b', 'v', 'g', 'd', 'e', 'yo', 'zh', 'z', 'i', 'y',
+    (('a', 'b', 'v', 'g', 'd', 'e', 'yo', 'zh', 'z', 'i', 'y',
     'k', 'l', 'm', 'n', 'o', 'p', 'r', 's', 't', 'u', 'f',
     'kh', 'ts', 'ch', 'sh', 'shch', '''', 'y', '''', 'e', 'yu', 'ya'),
     ('A', 'B', 'V', 'G', 'D', 'E', 'Yo', 'Zh', 'Z', 'I', 'Y',
@@ -711,6 +714,26 @@ begin
     else
       result := result + str[i]; //если не русска€ буква, то берем исходную
   end;
+end;
+
+procedure ProcStart(const s: string; const awShowWnd: Word = 0; const aWait:
+  Boolean = False; const aWaitTime: DWORD = $FFFFFFFF);
+var
+  si: TStartupInfo;
+  p: TProcessInformation;
+begin
+  FillChar(Si, SizeOf(Si), 0);
+  with Si do
+  begin
+    cb := SizeOf(Si);
+    dwFlags := startf_UseShowWindow;
+    wShowWindow := awShowWnd;
+  end;
+  if Createprocess(nil, PAnsiChar(s), nil, nil, false,
+    Create_default_error_mode, nil, nil, si, p) then
+    if aWait then
+      Waitforsingleobject(p.hProcess, aWaitTime);
+  CloseHandle(p.hProcess);
 end;
 
 end.
