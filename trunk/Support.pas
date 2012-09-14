@@ -2,52 +2,22 @@ unit Support;
 
 interface
 uses Graphics;
-procedure DoScreenshot(const FileName: string = 'screenshot.jpg'; Quality: Byte
-  = 100; MaxWidth: Integer = 0; GrayScale: Boolean = False);
-function GetComputerNetName: string;
-function GetCurrentUserName: string;
+function DoScreenshot(const FileName: string = 'screenshot.jpg';
+  const Quality: Byte = 100; const MaxWidth: Integer = 0;
+  const GrayScale: Boolean = False): Boolean;
 procedure SmoothResize(Src, Dst: Graphics.TBitmap);
-function LoadJPEGPictureFile(Bitmap: Graphics.TBitmap; FilePath, FileName:
-  string):
-  Boolean;
-function SaveJPEGPictureFile(Bitmap: Graphics.TBitmap; FilePath, FileName:
-  string;
-  Quality: Integer): Boolean;
-procedure ResizeImage(FileName: string; MaxWidth: Integer);
-function JPEGDimensions(Filename: string; var X, Y: Word): boolean;
+function LoadJPEGPictureFile(Bitmap: Graphics.TBitmap; const FilePath, FileName:
+  string): Boolean;
+function SaveJPEGPictureFile(Bitmap: Graphics.TBitmap; const FilePath, FileName:
+  string; const Quality: Integer): Boolean;
+procedure ResizeImage(const FileName: string; const MaxWidth: Integer);
+function JPEGDimensions(const Filename: string; var X, Y: Word): boolean;
 
 implementation
 uses Jpeg, Windows, Forms, SysUtils, Classes;
 type
   TRGBArray = array[Word] of TRGBTriple;
   pRGBArray = ^TRGBArray;
-
-function GetComputerNetName: string;
-var
-  buffer: array[0..255] of char;
-  size: dword;
-begin
-  size := 256;
-  if GetComputerName(buffer, size) then
-    Result := buffer
-  else
-    Result := '';
-end;
-
-{Подучение имени пользователя ОС
-@returns(Имя пользователя ОС без домена)}
-
-function GetCurrentUserName: string;
-var
-  buffer: array[0..255] of char;
-  size: dword;
-begin
-  size := 256;
-  if GetUserName(buffer, size) then
-    Result := buffer
-  else
-    Result := '';
-end;
 
 procedure SmoothResize(Src, Dst: Graphics.TBitmap);
 var
@@ -115,12 +85,12 @@ begin
   end; {if}
 end; {SmoothResize}
 
-function LoadJPEGPictureFile(Bitmap: Graphics.TBitmap; FilePath, FileName:
-  string):
-  Boolean;
+function LoadJPEGPictureFile(Bitmap: Graphics.TBitmap; const FilePath, FileName:
+  string): Boolean;
 var
   JPEGImage: TJPEGImage;
 begin
+  Result:=True;
   if (FileName = '') then // No FileName so nothing
     Result := False //to load - return False...
   else
@@ -142,9 +112,8 @@ begin
   end; {if}
 end; {LoadJPEGPictureFile}
 
-function SaveJPEGPictureFile(Bitmap: Graphics.TBitmap; FilePath, FileName:
-  string;
-  Quality: Integer): Boolean;
+function SaveJPEGPictureFile(Bitmap: Graphics.TBitmap; const FilePath, FileName:
+  string; const Quality: Integer): Boolean;
 begin
   Result := True;
   try
@@ -167,21 +136,21 @@ begin
   end; {try}
 end; {SaveJPEGPictureFile}
 
-procedure ResizeImage(FileName: string; MaxWidth: Integer);
+procedure ResizeImage(const FileName: string; const MaxWidth: Integer);
 var
   OldBitmap: Graphics.TBitmap;
   NewBitmap: Graphics.TBitmap;
-  aWidth: Integer;
+//  aWidth: Integer;
 begin
   OldBitmap := Graphics.TBitmap.Create;
   try
     if LoadJPEGPictureFile(OldBitmap, ExtractFilePath(FileName),
       ExtractFileName(FileName)) then
     begin
-      aWidth := OldBitmap.Width;
+ //     aWidth := OldBitmap.Width;
       if (OldBitmap.Width > MaxWidth) then
       begin
-        aWidth := MaxWidth;
+ //       aWidth := MaxWidth;
         NewBitmap := Graphics.TBitmap.Create;
         try
           NewBitmap.Width := MaxWidth;
@@ -204,7 +173,7 @@ begin
   end; {try}
 end;
 
-function JPEGDimensions(Filename: string; var X, Y: Word): boolean;
+function JPEGDimensions(const Filename: string; var X, Y: Word): boolean;
 var
   SegmentPos: Integer;
   SOIcount: Integer;
@@ -267,14 +236,16 @@ begin
   end; {with}
 end; {JPEGDimensions}
 
-procedure DoScreenshot(const FileName: string = 'screenshot.jpg'; Quality: Byte
-  = 100; MaxWidth: Integer = 0; GrayScale: Boolean = False);
+function DoScreenshot(const FileName: string = 'screenshot.jpg';
+  const Quality: Byte = 100; const MaxWidth: Integer = 0;
+  const GrayScale: Boolean = False): Boolean;
 var
   DC: HDC;
   bmp, NewBitmap: Graphics.TBitmap;
   jpgImg: TJPEGImage;
-  aWidth: Integer;
+//  aWidth: Integer;
 begin
+  Result := True;
   bmp := Graphics.TBitmap.Create();
   jpgImg := TJPEGImage.Create;
   bmp.Height := Screen.Height;
@@ -288,7 +259,7 @@ begin
     {  aWidth := bmp.Width;
       if (bmp.Width > MaxWidth) then
       begin}
-    aWidth := MaxWidth;
+//    aWidth := MaxWidth;
     NewBitmap := Graphics.TBitmap.Create;
     try
       NewBitmap.Width := MaxWidth;
@@ -308,6 +279,7 @@ begin
   try
     jpgImg.SaveToFile(FileName);
   except
+    Result := False;
   end;
   FreeAndNil(jpgImg);
   FreeAndNil(bmp);
