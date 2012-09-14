@@ -1,15 +1,23 @@
+{  Работа с базами данных
+  @author(Стеценко А.В. <avstecenko@ya.ru>)
+  @lastmod(22.06.2012)}
 unit SAVLib_DB;
 
 interface
 
 uses DB, DBGrids;
 
-// Выполняет в наборе данных Table фильтрацию (Search=False) или
-// поиск с помощью Locate (Search=True) возвращает результат Locate,
-// при фильтрации возвращает True при наличии условия фильтрации иначе False
-//function DBLocateFilter(Table: TDataSet; FieldLists, FieldValues: TStrings; const Search: Boolean = True): Boolean;
+{@exclude( Выполняет в наборе данных Table фильтрацию (Search=False) или
+ поиск с помощью Locate (Search=True) возвращает результат Locate,
+ при фильтрации возвращает True при наличии условия фильтрации иначе False
+function DBLocateFilter(Table: TDataSet; FieldLists, FieldValues: TStrings; const Search: Boolean = True): Boolean;)}
 
-//Копирование содержимого DBGrid в буфер обмена
+{Копирование содержимого DBGrid в буфер обмена
+@param DBGrid Объект из которого нужно скопировать данные
+@param Selected @false
+@param Entitled @fale
+@param Delimiter
+}
 procedure CopyDBGridToClipboardAsText(DBGrid: TDBGrid; const Selected: Boolean =
   False; const Entitled: Boolean = False; const Delimiter: string = #9);
 

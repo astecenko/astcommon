@@ -1,19 +1,21 @@
-{*******************************************************}
-{                                                       }
-{       SAVLib_INI  26-07-2012                          }
-{                                                       }
-{       Copyright (C) 2012 Stetsenko A.V.          }
-{       e-mail: astecenko@gmail.com                     }
-{       http://www.astecenko.net.ru/                    }
-{*******************************************************}
+{  Работа с INI-файлами
+  @author(Стеценко А.В. <avstecenko@ya.ru>)
+  @created(26.07.2012)
+  @lastmod(15.08.2012)}
 unit SAVLib_INI;
 
 interface
 
-// Слияние INI
+{ Слияние INI-файлов, путем перезаписывания в DestIniFile параметров из SourceIniFile
+  @param DestIniFile Полный путь к INI-файлу приемнику, файл может не существовать
+  @param SourceIniFile Полный путь к INI-файлу источнику, файл может не существовать }
 procedure MergeINI(const DestIniFile, SourceIniFile: string);
 
-//чтение текстового ключа из ini-файла без учета регистра
+{ Чтение текстового ключа из INI-файла без учета регистра (все значения переводятся в нижний регистр)
+  @param FileName Полный путь к INI-файлу
+  @param Section Секция
+  @param Ident Ключ
+  @param Default Значение по умолчанию}
 function IniReadStringEx(const FileName, Section, Ident, Default:
   string): string;
 
