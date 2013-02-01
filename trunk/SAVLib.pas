@@ -9,7 +9,8 @@
 
 unit SAVLib;
 interface
-uses SysUtils, Classes, Controls, CheckLst, Grids, StdCtrls, Math, Windows;
+uses SysUtils, Classes, Controls, CheckLst, Grids, StdCtrls, Math, Windows,
+  ShellAPI;
 const
   CSIDL_DESKTOP = $0000;
   CSIDL_INTERNET = $0001;
@@ -247,6 +248,8 @@ function TranslitRus2Lat(const Str: string): string;
 
 procedure ProcStart(const s: string; const awShowWnd: Word = 0; const aWait:
   Boolean = False; const aWaitTime: DWORD = $FFFFFFFF);
+
+function FileManage(FromFile, ToFile: string; mode: integer): integer;
 
 implementation
 uses Clipbrd, ActiveX, ShlObj;
@@ -734,6 +737,26 @@ begin
     if aWait then
       Waitforsingleobject(p.hProcess, aWaitTime);
   CloseHandle(p.hProcess);
+end;
+
+function FileManage(FromFile, ToFile: string; mode: integer): integer;
+var
+  SHF: TSHFileOpStruct;
+begin
+  with SHF do
+  begin
+    Wnd := 0;
+    pFrom := PChar(FromFile);
+    pTo := PChar(ToFile);
+    wFunc := mode;
+    fFlags := FOF_ALLOWUNDO;
+  end;
+  Result := SHFileOperation(SHF);
+  if Result <> 0 then
+    if SHF.fAnyOperationsAborted then
+      Result := 1
+    else
+      Result := 2;
 end;
 
 end.
