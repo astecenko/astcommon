@@ -247,7 +247,7 @@ procedure MemoLineSelect(Memo: TMemo; Index: integer);
 function TranslitRus2Lat(const Str: string): string;
 
 procedure ProcStart(const s: string; const awShowWnd: Word = 0; const aWait:
-  Boolean = False; const aWaitTime: DWORD = $FFFFFFFF);
+  Boolean = False; const aWaitTime: DWORD = $FFFFFFFF; const aCurDir:string='');
 
 function FileManage(FromFile, ToFile: string; mode: integer): integer;
 
@@ -720,10 +720,11 @@ begin
 end;
 
 procedure ProcStart(const s: string; const awShowWnd: Word = 0; const aWait:
-  Boolean = False; const aWaitTime: DWORD = $FFFFFFFF);
+  Boolean = False; const aWaitTime: DWORD = $FFFFFFFF; const aCurDir:string='');
 var
   si: TStartupInfo;
   p: TProcessInformation;
+  as1:PAnsiChar;
 begin
   FillChar(Si, SizeOf(Si), 0);
   with Si do
@@ -732,8 +733,9 @@ begin
     dwFlags := startf_UseShowWindow;
     wShowWindow := awShowWnd;
   end;
+  if aCurDir='' then as1:=nil else as1:=PAnsiChar(aCurDir);
   if Createprocess(nil, PAnsiChar(s), nil, nil, false,
-    Create_default_error_mode, nil, nil, si, p) then
+    Create_default_error_mode, nil, as1, si, p) then
     if aWait then
       Waitforsingleobject(p.hProcess, aWaitTime);
   CloseHandle(p.hProcess);
