@@ -190,7 +190,7 @@ function GetSpecialFolderLocation(const Folder: Integer; const FolderNew:
 procedure CopyTextToClipboard(const aText: string);
 
 //получения случайного имени файла в системном каталоге для временных файлов
-function GetTempFile(const Extension: string): string;
+function GetTempFile(const Extension: string = ''): string;
 
 // копирует файл aShortFileName из текущей директории в aNewPath, если в текущей он есть а в aNewPath нет
 procedure CopyFromCurDirIfExist(const aNewPath, aShortFileName: string);
@@ -247,9 +247,14 @@ procedure MemoLineSelect(Memo: TMemo; Index: integer);
 function TranslitRus2Lat(const Str: string): string;
 
 procedure ProcStart(const s: string; const awShowWnd: Word = 0; const aWait:
-  Boolean = False; const aWaitTime: DWORD = $FFFFFFFF; const aCurDir:string='');
+  Boolean = False; const aWaitTime: DWORD = $FFFFFFFF; const aCurDir: string =
+  '');
 
-function FileManage(FromFile, ToFile: string; mode: integer): integer;
+function FileManage(FromFile, ToFile: string; mode: integer; const flags: Word =
+  FOF_ALLOWUNDO): integer;
+
+function WinToDos(St: string): string;
+function DosToWin(St: string): string;
 
 implementation
 uses Clipbrd, ActiveX, ShlObj;
@@ -259,7 +264,7 @@ type
 
   //Получить полное имя временного файла с заданным расширением
 
-function GetTempFile(const Extension: string): string;
+function GetTempFile(const Extension: string = ''): string;
 var
   Buffer: array[0..MAX_PATH] of Char;
   //  aFile: string;
@@ -267,8 +272,11 @@ begin
   repeat
     GetTempPath(SizeOf(Buffer) - 1, Buffer);
     GetTempFileName(Buffer, '~', 0, Buffer);
-    Result := ChangeFileExt(Buffer, Extension);
+    Result := Buffer;
   until FileExists(Result);
+  if Extension <> '' then
+    Result := ChangeFileExt(Buffer, Extension);
+
 end;
 
 //Корректное копирование русского текста в буфер обмена
@@ -720,11 +728,12 @@ begin
 end;
 
 procedure ProcStart(const s: string; const awShowWnd: Word = 0; const aWait:
-  Boolean = False; const aWaitTime: DWORD = $FFFFFFFF; const aCurDir:string='');
+  Boolean = False; const aWaitTime: DWORD = $FFFFFFFF; const aCurDir: string =
+  '');
 var
   si: TStartupInfo;
   p: TProcessInformation;
-  as1:PAnsiChar;
+  as1: PAnsiChar;
 begin
   FillChar(Si, SizeOf(Si), 0);
   with Si do
@@ -733,7 +742,10 @@ begin
     dwFlags := startf_UseShowWindow;
     wShowWindow := awShowWnd;
   end;
-  if aCurDir='' then as1:=nil else as1:=PAnsiChar(aCurDir);
+  if aCurDir = '' then
+    as1 := nil
+  else
+    as1 := PAnsiChar(aCurDir);
   if Createprocess(nil, PAnsiChar(s), nil, nil, false,
     Create_default_error_mode, nil, as1, si, p) then
     if aWait then
@@ -741,7 +753,8 @@ begin
   CloseHandle(p.hProcess);
 end;
 
-function FileManage(FromFile, ToFile: string; mode: integer): integer;
+function FileManage(FromFile, ToFile: string; mode: integer; const flags: Word =
+  FOF_ALLOWUNDO): integer;
 var
   SHF: TSHFileOpStruct;
 begin
@@ -751,7 +764,7 @@ begin
     pFrom := PChar(FromFile);
     pTo := PChar(ToFile);
     wFunc := mode;
-    fFlags := FOF_ALLOWUNDO;
+    fFlags := flags;
   end;
   Result := SHFileOperation(SHF);
   if Result <> 0 then
@@ -759,6 +772,25 @@ begin
       Result := 1
     else
       Result := 2;
+end;
+
+function WinToDos(St: string): string;
+var
+  Ch: PChar;
+begin
+  Ch := StrAlloc(Length(St) + 1);
+  AnsiToOem(PChar(St), Ch);
+  Result := Ch;
+  StrDispose(Ch)
+end;
+function DosToWin(St: string): string;
+var
+  Ch: PChar;
+begin
+  Ch := StrAlloc(Length(St) + 1);
+  OemToAnsi(PChar(St), Ch);
+  Result := Ch;
+  StrDispose(Ch)
 end;
 
 end.
