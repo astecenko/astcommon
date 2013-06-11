@@ -213,6 +213,9 @@ function FileVersion(AFileName: string): string;
 //проверка доступа к каталогу (через запись-удаление файла)
 function DirectoryIsReadOnly(const DirName: string): Boolean;
 
+//удаление файла, каталога
+function DelDir(const dir: string): Boolean;
+
 //Дополняет строку expression слева символом cFillChar до длины nLength
 function Padl(expression: string; nLength: Integer; cFillChar: Char = ' '):
   string;
@@ -426,6 +429,24 @@ begin
   Result := hFile = INVALID_HANDLE_VALUE;
   CloseHandle(hFile);
   Windows.DeleteFile(PChar(sf));
+end;
+
+{Удаление каталога(пустого, не пустого)/файла средствами Windows API}
+
+function DelDir(const dir: string): Boolean;
+var
+  fos: TSHFileOpStruct;
+  s:string;
+begin
+  s:=ExcludeTrailingPathDelimiter(dir);
+  ZeroMemory(@fos, SizeOf(fos));
+  with fos do
+  begin
+    wFunc  := FO_DELETE;
+    fFlags := FOF_SILENT or FOF_NOCONFIRMATION;
+    pFrom  := PChar(s + #0);
+  end;
+  Result := (0 = ShFileOperation(fos));
 end;
 
 {Дополняет строку expression слева символом cFillChar до длины nLength}
