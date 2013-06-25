@@ -128,7 +128,7 @@ end;
 end.
 
 {
-Из модуля вызывается через функцию Setting
+Iz modulejj vizivaetsia cherez Setting
 Naprimer:
 
 Settings.StopIniPath := InitDBFTable('pr02.ini', '', '', False, False, False, False) + 'pr02.ini';
