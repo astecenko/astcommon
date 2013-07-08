@@ -259,8 +259,11 @@ function FileManage(FromFile, ToFile: string; mode: integer; const flags: Word =
 function WinToDos(St: string): string;
 function DosToWin(St: string): string;
 
+//Задержка не загружающая процессор. Value - мсек.
+procedure Delay(Value: Cardinal);
+
 implementation
-uses Clipbrd, ActiveX, ShlObj;
+uses Clipbrd, ActiveX, ShlObj, Forms;
 
 type
   TClipboardAccess = class(TClipboard);
@@ -812,6 +815,24 @@ begin
   OemToAnsi(PChar(St), Ch);
   Result := Ch;
   StrDispose(Ch)
+end;
+
+procedure Delay(Value: Cardinal);
+var
+  F, N: Cardinal;
+begin
+  N := 0;
+  while N <= (Value div 10) do
+  begin
+    SleepEx(1, True);
+    Application.ProcessMessages;
+    Inc(N);
+  end;
+  F := GetTickCount;
+  repeat
+    Application.ProcessMessages;
+    N := GetTickCount;
+  until (N - F >= (Value mod 10)) or (N < F);
 end;
 
 end.
