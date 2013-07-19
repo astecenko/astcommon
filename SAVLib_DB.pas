@@ -22,10 +22,27 @@ procedure CopyDBGridToClipboardAsText(DBGrid: TDBGrid; const Selected: Boolean =
   False; const Entitled: Boolean = False; const Delimiter: string = #9);
 
 function GridSelectAll(Grid: TDBGrid): Longint;
+function CheckField(const aTableName, aFieldName:string):boolean;
 
 implementation
 
-uses SysUtils, Classes, Controls, SAVLib;
+uses SysUtils, Classes, Controls, SAVLib, DBTables;
+
+function CheckField(const aTableName, aFieldName:string):boolean;
+var
+  t:tquery;
+begin
+  Result:=True;
+  t:=TQuery.Create(nil);
+  t.SQL.Text:='select '+aFieldName+' from '+QuotedStr(aTableName);
+  try
+  t.Open;
+  except
+    Result:=False;
+  end;
+  t.Close;
+  FreeAndNil(t);
+end;
 
 (*function DBLocateFilter(Table: TDataSet; FieldLists, FieldValues: TStrings; const
   Search: Boolean = True): Boolean;
