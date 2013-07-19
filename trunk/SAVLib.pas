@@ -201,6 +201,16 @@ function IfThen(AValue: Boolean; const ATrue: string; const AFalse: string =
 //получение даты изменения файла
 function GetFileDate(TheFileName: string): TDate;
 
+function TimeBetween(const aNow, aThen: TDateTime; const aType: char = ' '):
+  Integer;
+{Возвращает количество секунд разницы между датами изменения 2ух файлов
+ aType может принимать значение W - неделя, D - день, Y - год, M - месяц, h - час
+ m - минуты, s - секунды}
+function TimeBetweenFileDate(const FirstFile, SecondFile: string; const aType:
+  char = ' '): Integer;
+function SameTime(const ANow, AThen: TDateTime; const aType: char = ' '):
+  boolean;
+
 //перемена значений двух переменных местами
 procedure ChangeVarPlaces(var a, b: Integer); overload;
 procedure ChangeVarPlaces(var a, b: Real); overload;
@@ -262,8 +272,33 @@ function DosToWin(St: string): string;
 //Задержка не загружающая процессор. Value - мсек.
 procedure Delay(Value: Cardinal);
 
+// Проверить статус (доступ) файла
+  {
+      Значение             Описание
+      fmCreate             Создать файл с данным именем. Если файл существует, то открыть его в
+                                   режиме записи.
+      fmOpenRead           Открыть файл только для чтения.
+      fmOpenWrite          Открыть файл только на запись. При этом запись в файл заменит вс? его
+                                   содержимое.
+      fmOpenReadWrite Открыть файл скорее для изменения содержимого чем для замены его.
+
+      Режим доступа должен иметь одно из следующих значений:
+
+      Значение            Описание
+      fmShareCompat       Доступ к файлу совместим с использование блоков управления файлами (FCB).
+      fmShareExclusive    Другое приложение не может открыть файл для различных целей.
+      fmShareDenyWrite    Другое приложение может открыть файл для чтения, но не для записи.
+      fmShareDenyRead     Другое приложение может открыть файл для записи, но не для чтения.
+      fmShareDenyNone     Разрешить другим файлам делать с файлом и чтени и запись.
+
+      Если файл невозможно открыть, то Create сгенерирует исключение.
+      Возвращает true если файл не заблокирован
+  }
+function GetFileStatus(const Origin: string; const Mode: word = fmOpenReadWrite
+  or fmShareExclusive): boolean;
+
 implementation
-uses Clipbrd, ActiveX, ShlObj, Forms;
+uses Clipbrd, ActiveX, ShlObj, Forms, DateUtils;
 
 type
   TClipboardAccess = class(TClipboard);
@@ -326,9 +361,93 @@ function GetFileDate(TheFileName: string): TDate;
 var
   FHandle: integer;
 begin
-  FHandle := FileOpen(TheFileName, 0);
-  result := FileDateToDateTime(FileGetDate(FHandle));
+  FHandle := FileOpen(TheFileName, FmOpenRead + FmShareDenyNone);
+  if FHandle > -1 then
+    result := FileDateToDateTime(FileGetDate(FHandle))
+  else
+    Result := EncodeDateTime(1900, 1, 1, 0, 0, 0, 0);
   FileClose(FHandle);
+end;
+
+{Возвращает количество секунд разницы между датами
+ aType может принимать значение W - неделя, D - день, Y - год, M - месяц, h - час
+ m - минуты, s - секунды, любое другое значение - миллисекунды}
+
+function TimeBetween(const aNow, aThen: TDateTime; const aType:
+  char = ' '): Integer;
+begin
+  case aType of
+    'W': Result := WeeksBetween(aNow, aThen);
+    'D': Result := DaysBetween(aNow, aThen);
+    'Y': Result := YearsBetween(aNow, aThen);
+    'M': Result := MonthsBetween(aNow, aThen);
+    'h': Result := HoursBetween(aNow, aThen);
+    'm': Result := MinutesBetween(aNow, aThen);
+    's': Result := SecondsBetween(aNow, aThen);
+  else
+    Result := MilliSecondsBetween(aNow, aThen)
+  end;
+  if aNow < aThen then
+    Result := -1 * Result;
+end;
+
+{Возвращает количество секунд разницы между датами изменения 2ух файлов
+ aType может принимать значение W - неделя, D - день, Y - год, M - месяц, h - час
+ m - минуты, s - секунды, любое другое значение - миллисекунды}
+
+function TimeBetweenFileDate(const FirstFile, SecondFile: string; const
+  aType:
+  char = ' '): Integer;
+var
+  t1, t2: TDateTime;
+begin
+  t1 := GetFileDate(FirstFile);
+  t2 := GetFileDate(SecondFile);
+  Result := TimeBetween(t1, t2, aType)
+end;
+
+{возвращает True если даты ANow и AThen находятся в одном временном интервале
+aType может принимать значение W - неделя, D - день, Y - год, M - месяц, h - час
+ m - минуты, s - секунды, любое другое значение - миллисекунды
+}
+
+function SameTime(const ANow, AThen: TDateTime; const aType: char = ' '):
+  boolean;
+var
+  nowYear, thenYear, nowMonth, thenMonth, nowDay, thenDay, nowHour,
+    thenHour,
+    nowMin, thenMin, nowSec, thenSec, nowMilli, thenMilli: word;
+begin
+  DecodeDateTime(ANow, nowYear, nowMonth, nowDay, nowHour, nowMin, nowSec,
+    nowMilli);
+  DecodeDateTime(AThen, thenYear, thenMonth, thenDay, thenHour, thenMin,
+    thenSec, thenMilli);
+  case aType of
+    'Y': Result := nowYear = thenYear;
+    'M': Result := (nowYear = thenYear)
+      and (nowMonth = nowMonth);
+    'W': Result:=StartOfTheWeek(ANow) = StartOfTheWeek(AThen);
+    'D': Result := (nowYear = thenYear)
+      and (nowMonth = nowMonth)
+        and (nowDay = thenDay);
+    'h': Result := (nowYear = thenYear)
+      and (nowMonth = nowMonth)
+        and (nowDay = thenDay)
+        and (nowHour = thenHour);
+    'm': Result := (nowYear = thenYear)
+      and (nowMonth = nowMonth)
+        and (nowDay = thenDay)
+        and (nowHour = thenHour)
+        and (nowMin = thenMin);
+    's': Result := (nowYear = thenYear)
+      and (nowMonth = nowMonth)
+        and (nowDay = thenDay)
+        and (nowHour = thenHour)
+        and (nowMin = thenMin)
+        and (nowSec = thenSec);
+  else
+    Result := ANow = AThen;
+  end;
 end;
 
 procedure ChangeVarPlaces(var a, b: Integer); overload;
@@ -439,22 +558,23 @@ end;
 function DelDir(const dir: string): Boolean;
 var
   fos: TSHFileOpStruct;
-  s:string;
+  s: string;
 begin
-  s:=ExcludeTrailingPathDelimiter(dir);
+  s := ExcludeTrailingPathDelimiter(dir);
   ZeroMemory(@fos, SizeOf(fos));
   with fos do
   begin
-    wFunc  := FO_DELETE;
+    wFunc := FO_DELETE;
     fFlags := FOF_SILENT or FOF_NOCONFIRMATION;
-    pFrom  := PChar(s + #0);
+    pFrom := PChar(s + #0);
   end;
   Result := (0 = ShFileOperation(fos));
 end;
 
 {Дополняет строку expression слева символом cFillChar до длины nLength}
 
-function Padl(expression: string; nLength: Integer; cFillChar: Char = ' '):
+function Padl(expression: string; nLength: Integer; cFillChar: Char =
+  ' '):
   string;
 var
   n, i: Integer;
@@ -475,7 +595,8 @@ end;
 
 {Дополняет строку expression справа символом cFillChar до длины nLength}
 
-function Padr(expression: string; nLength: Integer; cFillChar: Char = ' '):
+function Padr(expression: string; nLength: Integer; cFillChar: Char =
+  ' '):
   string;
 var
   n, i: Integer;
@@ -493,7 +614,8 @@ begin
     Result := Copy(s, 1, nLength);
 end;
 
-procedure GetDirList(Dest: TStrings; const Source: string = ''; const FullPath:
+procedure GetDirList(Dest: TStrings; const Source: string = ''; const
+  FullPath:
   Boolean = False);
 var
   source1: string;
@@ -522,7 +644,8 @@ begin
   SysUtils.FindClose(sr);
 end;
 
-function List2String(source: TStrings; const delimiter: string = '|'): string;
+function List2String(source: TStrings; const delimiter: string = '|'):
+  string;
 var
   i: Integer;
 begin
@@ -536,7 +659,8 @@ begin
     Result := '';
 end;
 
-function CheckList2String(source: TCheckListBox; const delimiter: string = '|';
+function CheckList2String(source: TCheckListBox; const delimiter: string =
+  '|';
   const checksign: Char = '^'): string;
 var
   i: Integer;
@@ -562,7 +686,8 @@ begin
     Result := '';
 end;
 
-procedure String2List(const source: string; dest: TStrings; const delimiter:
+procedure String2List(const source: string; dest: TStrings; const
+  delimiter:
   string = '|');
 begin
   if source <> '' then
@@ -582,7 +707,8 @@ begin
       if dest.Items[i][1] = checksign then
       begin
         dest.Checked[i] := True;
-        dest.Items[i] := Copy(dest.Items[i], 2, Length(dest.Items[i]) - 1);
+        dest.Items[i] := Copy(dest.Items[i], 2, Length(dest.Items[i]) -
+          1);
       end;
   end;
 end;
@@ -633,7 +759,8 @@ begin
     if Assigned(SHGetKnownFolderPath) then
     begin
       FolderPath := nil;
-      SetLastError(Cardinal(SHGetKnownFolderPath(FolderNew, KF_FLAG_DONT_VERIFY,
+      SetLastError(Cardinal(SHGetKnownFolderPath(FolderNew,
+        KF_FLAG_DONT_VERIFY,
         0, FolderPath)));
       if Succeeded(HRESULT(GetLastError)) then
       begin
@@ -650,7 +777,8 @@ begin
     if Assigned(SHGetFolderPath) then
     begin
       FolderPath := AllocMem((MAX_PATH + 1) * SizeOf(WideChar));
-      SetLastError(Cardinal(SHGetFolderPath(0, Folder, 0, 0, FolderPath)));
+      SetLastError(Cardinal(SHGetFolderPath(0, Folder, 0, 0,
+        FolderPath)));
       if Succeeded(HRESULT(GetLastError)) then
         Result := FolderPath;
       FreeMem(FolderPath);
@@ -703,7 +831,8 @@ begin
     qSort(ar, i, high);
 end;
 
-function SimpleRoundTo(const AValue: Extended; const ADigit: TRoundToRange =
+function SimpleRoundTo(const AValue: Extended; const ADigit: TRoundToRange
+  =
   -2): Extended;
 var
   LFactor: Extended;
@@ -751,8 +880,10 @@ begin
   end;
 end;
 
-procedure ProcStart(const s: string; const awShowWnd: Word = 0; const aWait:
-  Boolean = False; const aWaitTime: DWORD = $FFFFFFFF; const aCurDir: string =
+procedure ProcStart(const s: string; const awShowWnd: Word = 0; const
+  aWait:
+  Boolean = False; const aWaitTime: DWORD = $FFFFFFFF; const aCurDir:
+  string =
   '');
 var
   si: TStartupInfo;
@@ -777,7 +908,8 @@ begin
   CloseHandle(p.hProcess);
 end;
 
-function FileManage(FromFile, ToFile: string; mode: integer; const flags: Word =
+function FileManage(FromFile, ToFile: string; mode: integer; const flags:
+  Word =
   FOF_ALLOWUNDO): integer;
 var
   SHF: TSHFileOpStruct;
@@ -807,6 +939,7 @@ begin
   Result := Ch;
   StrDispose(Ch)
 end;
+
 function DosToWin(St: string): string;
 var
   Ch: PChar;
@@ -822,7 +955,7 @@ var
   F, N: Cardinal;
 begin
   N := 0;
-  while N <= (Value div 10) do
+  while N<=(Value div 10) do
   begin
     SleepEx(1, True);
     Application.ProcessMessages;
@@ -832,7 +965,25 @@ begin
   repeat
     Application.ProcessMessages;
     N := GetTickCount;
-  until (N - F >= (Value mod 10)) or (N < F);
+  until (N - F>=(Value mod 10)) or (N < F);
+end;
+
+function GetFileStatus(const Origin: string; const Mode: word =
+  fmOpenReadWrite
+  or fmShareExclusive): boolean;
+var
+  F: TFileStream;
+begin
+  try
+    F := TFileStream.Create(Origin, Mode);
+    try
+      Result := true;
+    finally
+      F.Free;
+    end;
+  except
+    Result := false;
+  end;
 end;
 
 end.
