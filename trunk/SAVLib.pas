@@ -201,15 +201,27 @@ function IfThen(AValue: Boolean; const ATrue: string; const AFalse: string =
 //получение даты изменения файла
 function GetFileDate(TheFileName: string): TDate;
 
+//получение размера файла в байтах
+//если больше 4Гб надо использвать 2ой вариант
+function GetFileSizeEx(const aFileName: string): DWORD; overload;
+function GetFileSizeEx(const aFileName: string; out aResult:boolean): int64; overload;
+
+
+
 function TimeBetween(const aNow, aThen: TDateTime; const aType: char = ' '):
   Integer;
+
 {Возвращает количество секунд разницы между датами изменения 2ух файлов
  aType может принимать значение W - неделя, D - день, Y - год, M - месяц, h - час
  m - минуты, s - секунды}
 function TimeBetweenFileDate(const FirstFile, SecondFile: string; const aType:
   char = ' '): Integer;
+
 function SameTime(const ANow, AThen: TDateTime; const aType: char = ' '):
   boolean;
+
+function SameTimeFileDate(const FirstFile, SecondFile: string;
+  const aType: char = ' '): Boolean;
 
 //перемена значений двух переменных местами
 procedure ChangeVarPlaces(var a, b: Integer); overload;
@@ -369,6 +381,42 @@ begin
   FileClose(FHandle);
 end;
 
+//получение размера файла в байтах
+//при размере до 4Гб
+function GetFileSizeEx(const aFileName: string): DWORD; overload;
+var
+  hFile, fileSize: Integer;
+begin
+  Result := 0;
+  try
+    hFile := FileOpen(aFileName, fmOpenRead + FmShareDenyNone);
+    if hFile <> 0 then
+      Result := GetFileSize(hFile, nil);
+  except
+    FileClose(hFile);
+  end;
+end;
+
+//получение размера файла в байтах
+//лучше использовать при потенциальном размере файла более 4Гб
+function GetFileSizeEx(const aFileName: string; out aResult:boolean): int64; overload;
+var
+  Win32FindData: TWin32FindData;
+  FileHandle: THandle;
+begin
+  Result:=0;
+  FileHandle := FindFirstFile(PAnsiChar(aFileName), Win32FindData);
+  aResult := FileHandle <> INVALID_HANDLE_VALUE;
+  if aResult then
+  try
+    Int64Rec(Result).Hi := Win32FindData.nFileSizeHigh;
+    Int64Rec(Result).Lo := Win32FindData.nFileSizeLow;
+  finally
+    Windows.FindClose(FileHandle);
+  end;
+end;
+
+
 {Возвращает количество секунд разницы между датами
  aType может принимать значение W - неделя, D - день, Y - год, M - месяц, h - час
  m - минуты, s - секунды, любое другое значение - миллисекунды}
@@ -426,7 +474,7 @@ begin
     'Y': Result := nowYear = thenYear;
     'M': Result := (nowYear = thenYear)
       and (nowMonth = nowMonth);
-    'W': Result:=StartOfTheWeek(ANow) = StartOfTheWeek(AThen);
+    'W': Result := StartOfTheWeek(ANow) = StartOfTheWeek(AThen);
     'D': Result := (nowYear = thenYear)
       and (nowMonth = nowMonth)
         and (nowDay = thenDay);
@@ -448,6 +496,16 @@ begin
   else
     Result := ANow = AThen;
   end;
+end;
+
+function SameTimeFileDate(const FirstFile, SecondFile: string;
+  const aType: char = ' '): Boolean;
+var
+  t1, t2: TDateTime;
+begin
+  t1 := GetFileDate(FirstFile);
+  t2 := GetFileDate(SecondFile);
+  Result := SameTime(t1, t2, aType)
 end;
 
 procedure ChangeVarPlaces(var a, b: Integer); overload;
