@@ -182,6 +182,13 @@ const
   FOLDERID_VideosLibrary: TGUID = '{491E922F-5643-4AF4-A7EB-4E7A138D8174}';
   FOLDERID_Windows: TGUID = '{F38BF404-1D43-42F2-9305-67DE0B28FC23}';
 
+type
+
+  ArrInt = array of Integer;
+
+function IsBit(N: Longint; nBit: Byte): Boolean;
+function IsBit_Hex(S: string; nBit: Byte): Boolean;
+
   //получение спец. каталогов.
 function GetSpecialFolderLocation(const Folder: Integer; const FolderNew:
   TGUID): string;
@@ -257,6 +264,13 @@ procedure GetDirList(Dest: TStrings; const Source: string = ''; const FullPath:
 //быстра€ сортировка
 procedure qSort(var ar: array of real; low, high: integer);
 
+//соритовка целочисленного массива методом пузырька
+procedure BubbleSort(var a: array of Integer);
+
+//сортировка и поиск элемента в динмическом
+//массиве
+function SearhInIntArray(a: TBoundArray; b: Integer): Boolean;
+
 function List2String(source: TStrings; const delimiter: string = '|'): string;
 function CheckList2String(source: TCheckListBox; const delimiter: string = '|';
   const checksign: Char = '^'): string;
@@ -277,6 +291,10 @@ procedure ProcStart(const s: string; const awShowWnd: Word = 0; const aWait:
 
 function FileManage(FromFile, ToFile: string; mode: integer; const flags: Word =
   FOF_ALLOWUNDO): integer;
+
+function ExtractFileNameWithoutExt(const FileName : string) :string;
+
+procedure RemoveDuplicates(const stringList : TStringList);
 
 function WinToDos(St: string): string;
 function DosToWin(St: string): string;
@@ -314,6 +332,17 @@ uses Clipbrd, ActiveX, ShlObj, Forms, DateUtils;
 
 type
   TClipboardAccess = class(TClipboard);
+
+
+function IsBit(N: Longint; nBit: Byte): Boolean;
+begin
+result := ((1 shl (nBit - 1)) and N) <> 0;
+end;
+
+function IsBit_Hex(S: string; nBit: Byte): Boolean;
+begin
+Result := IsBit(StrToInt('$' + S), nBit);
+end;
 
   //ѕолучить полное им€ временного файла с заданным расширением
 
@@ -889,6 +918,44 @@ begin
     qSort(ar, i, high);
 end;
 
+procedure BubbleSort(var a: array of Integer);
+ var i,p,n: Integer; b: boolean;
+begin
+ n:= Length(a);
+ if n < 2 then exit;
+ repeat
+  b:= false;
+  Dec(n);
+  if n > 0 then
+  for i:= 0 to n-1 do
+   if a[i] > a[i+1] then
+    begin
+     p:= a[i];
+     a[i]:= a[i+1];
+     a[i+1]:= p;
+     b:= true;
+    end;
+ until not b;
+end;
+
+
+function SearhInIntArray(a: TBoundArray; b: Integer) : Boolean;
+var
+  l, r, n, m: integer;
+begin
+  //предварительно отсуртируйте!!!\
+  l := 0;
+  n:= Length(a);
+  r := n + 1;
+  While l < r - 1 do
+    begin
+      m := (l + r) div 2;
+      if a[m] > b then r := m
+       else l := m;
+    end;
+  Result := a[l] = b;
+end;
+
 function SimpleRoundTo(const AValue: Extended; const ADigit: TRoundToRange
   =
   -2): Extended;
@@ -987,6 +1054,33 @@ begin
     else
       Result := 2;
 end;
+
+function ExtractFileNameWithoutExt(const FileName : string) :string;
+begin
+  Result := ExtractFileName(FileName);
+  Result := Copy(Result,1,Length(Result) - Length(ExtractFileExt(Result)));
+end;  
+
+//remove duplicate strings from the string list
+ procedure RemoveDuplicates(const stringList : TStringList) ;
+ var
+   buffer: TStringList;
+   cnt: Integer;
+ begin
+   stringList.Sort;
+   buffer := TStringList.Create;
+   try
+     buffer.Sorted := True;
+     buffer.Duplicates := dupIgnore;
+     buffer.BeginUpdate;
+     for cnt := 0 to stringList.Count - 1 do
+       buffer.Add(stringList[cnt]) ;
+     buffer.EndUpdate;
+     stringList.Assign(buffer) ;
+   finally
+     FreeandNil(buffer) ;
+   end;
+ end;
 
 function WinToDos(St: string): string;
 var
